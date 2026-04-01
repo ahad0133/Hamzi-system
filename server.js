@@ -5,48 +5,58 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-let keysDB = []; // memory storage
+let keys=[];
 
-// 🔑 GENERATE KEY
-app.post('/generate-key', (req, res) => {
-    const { duration } = req.body;
+/* LOGIN */
+app.post('/login',(req,res)=>{
+const {username,password}=req.body;
 
-    const key = "HAMZI-" + Math.random().toString(36).substring(2, 9).toUpperCase();
+if(username==="admin" && password==="123456"){
+return res.json({success:true});
+}
 
-    const expiry = Date.now() + (duration * 1000);
-
-    keysDB.push({
-        key,
-        expiry
-    });
-
-    res.json({ key, expiry });
+res.json({success:false});
 });
 
-// 🔐 VERIFY KEY
-app.post('/verify-key', (req, res) => {
-    const { key } = req.body;
+/* GENERATE */
+app.post('/generate-key',(req,res)=>{
+const {duration}=req.body;
 
-    const found = keysDB.find(k => k.key === key);
+const key="HAMZI-"+Math.random().toString(36).substr(2,7).toUpperCase();
+const expiry=Date.now()+duration*1000;
 
-    if (!found) return res.json({ valid: false });
+keys.push({key,expiry});
 
-    if (Date.now() > found.expiry) {
-        return res.json({ valid: false });
-    }
-
-    res.json({ valid: true, expiry: found.expiry });
+res.json({key});
 });
 
-// 📋 GET ALL KEYS
-app.get('/keys', (req, res) => {
-    res.json(keysDB);
+/* GET KEYS */
+app.get('/keys',(req,res)=>{
+res.json(keys);
 });
 
-// ❌ DELETE KEY
-app.delete('/delete/:key', (req, res) => {
-    keysDB = keysDB.filter(k => k.key !== req.params.key);
-    res.json({ success: true });
+/* DELETE */
+app.delete('/delete/:key',(req,res)=>{
+keys=keys.filter(k=>k.key!==req.params.key);
+res.json({ok:true});
 });
 
-app.listen(3000, () => console.log("Server running on port 3000"));
+/* STATS */
+app.get('/stats',(req,res)=>{
+const now=Date.now();
+
+const total=keys.length;
+const active=keys.filter(k=>k.expiry>now).length;
+const expired=keys.filter(k=>k.expiry<=now).length;
+
+res.json({total,active,expired});
+});
+
+/* CLEAR */
+app.post('/clear-expired',(req,res)=>{
+const now=Date.now();
+keys=keys.filter(k=>k.expiry>now);
+res.json({ok:true});
+});
+
+app.listen(3000,()=>console.log("Server running"));
