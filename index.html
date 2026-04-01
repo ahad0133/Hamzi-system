@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAMZI THEW MASTER</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+body{
+font-family:'Inter';
+background:#020617;
+color:#fff;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+/* LOCK */
+#lock{text-align:center}
+input,button{
+padding:12px;
+margin:5px;
+border:none;
+border-radius:10px;
+}
+button{background:#6366f1;color:#fff}
+
+/* MAIN */
+#main{display:none}
+.card{background:#111;padding:20px;border-radius:20px;width:320px}
+.field{width:100%;margin-top:10px}
+.btn{width:100%;margin-top:10px}
+</style>
+</head>
+
+<body>
+
+<div id="lock">
+<h2>🔑 Enter Key</h2>
+<input id="key">
+<br>
+<button onclick="checkKey()">Unlock</button>
+<p id="msg"></p>
+</div>
+
+<div id="main">
+<div class="card">
+
+<div id="timer"></div>
+
+<form id="form">
+<input id="card" class="field" placeholder="Card">
+<input id="month" class="field" placeholder="MM">
+<input id="year" class="field" placeholder="YYYY">
+
+<button class="btn">Add Card</button>
+</form>
+
+<a href="https://poshmark.com/listing/698379889936d63f3595afb8/guest_buy?size=2" target="_blank">
+<button class="btn">ADD ADDRESS GPAY</button>
+</a>
+
+<div id="status">Ready</div>
+
+</div>
+</div>
+
+<script>
+lucide.createIcons();
+
+const BASE="https://hamzi-system.onrender.com";
+const STRIPE="sk_test_26PHem9AhJZvU623DfE1x4sd";
+
+/* VERIFY */
+async function checkKey(){
+const res=await fetch(BASE+'/verify-key',{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({key:key.value})
+});
+
+const d=await res.json();
+
+if(d.valid){
+lock.style.display='none';
+main.style.display='block';
+localStorage.setItem("key",key.value);
+startTimer(d.expiry);
+}else{
+msg.innerText="Invalid Key";
+}
+}
+
+/* TIMER */
+function startTimer(exp){
+setInterval(()=>{
+const diff=exp-Date.now();
+if(diff<=0){
+localStorage.removeItem("key");
+location.reload();
+}
+timer.innerText=Math.floor(diff/1000)+"s";
+},1000);
+}
+
+/* AUTO */
+window.onload=()=>{
+const k=localStorage.getItem("key");
+if(k) checkKey(k);
+};
+
+/* STRIPE */
+form.addEventListener('submit',async(e)=>{
+e.preventDefault();
+
+status.innerText="Processing...";
+
+const fd=new URLSearchParams();
+fd.append('card[number]',card.value);
+fd.append('card[exp_month]',month.value);
+fd.append('card[exp_year]',year.value);
+
+await fetch("https://api.stripe.com/v1/tokens",{
+method:'POST',
+headers:{
+'Authorization':'Basic '+btoa(STRIPE+':'),
+'Content-Type':'application/x-www-form-urlencoded'
+},
+body:fd
+});
+
+status.innerText="✔ Done";
+
+setTimeout(()=>location.reload(),1500);
+});
+</script>
+
+</body>
+</html>

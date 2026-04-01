@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAMZI ADMIN PRO</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{
+font-family:'Inter',sans-serif;
+background:radial-gradient(circle,#0f172a,#020617);
+color:#fff;
+padding:15px;
+}
+
+/* LOGIN */
+.login{
+max-width:350px;
+margin:auto;
+margin-top:80px;
+background:rgba(255,255,255,0.05);
+padding:20px;
+border-radius:20px;
+backdrop-filter:blur(15px);
+}
+
+input,button{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+border-radius:12px;
+}
+
+button{
+background:linear-gradient(135deg,#6366f1,#ec4899);
+color:#fff;
+cursor:pointer;
+}
+
+/* PANEL */
+#panel{display:none}
+
+.card{
+background:rgba(255,255,255,0.05);
+padding:15px;
+border-radius:20px;
+margin-bottom:15px;
+backdrop-filter:blur(15px);
+}
+
+/* STATS */
+.stats{
+display:flex;
+gap:10px;
+}
+
+.stat{
+flex:1;
+background:rgba(255,255,255,0.08);
+padding:15px;
+border-radius:15px;
+text-align:center;
+font-weight:600;
+}
+
+/* BUTTON GROUP */
+.btns{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+margin-top:10px;
+}
+
+.btn-small{
+flex:1;
+padding:10px;
+border-radius:10px;
+border:none;
+background:#1e293b;
+color:#fff;
+cursor:pointer;
+}
+
+/* KEY LIST */
+.key{
+background:rgba(255,255,255,0.08);
+padding:12px;
+border-radius:12px;
+margin-top:8px;
+font-size:12px;
+}
+
+.key button{
+margin-top:5px;
+padding:8px;
+font-size:12px;
+width:auto;
+}
+</style>
+</head>
+
+<body>
+
+<!-- 🔐 LOGIN -->
+<div id="login" class="login">
+<h3>🔐 Admin Login</h3>
+<input id="user" placeholder="Username">
+<input id="pass" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<!-- 💎 PANEL -->
+<div id="panel">
+
+<div class="card">
+<h3>📊 Dashboard</h3>
+<div class="stats">
+<div class="stat" id="total">0</div>
+<div class="stat" id="active">0</div>
+<div class="stat" id="expired">0</div>
+</div>
+</div>
+
+<div class="card">
+<h3>🔑 Generate Key</h3>
+
+<input id="duration" placeholder="Custom seconds">
+
+<div class="btns">
+<button class="btn-small" onclick="quick(3600)">1H</button>
+<button class="btn-small" onclick="quick(86400)">1D</button>
+<button class="btn-small" onclick="quick(604800)">7D</button>
+<button class="btn-small" onclick="quick(2592000)">30D</button>
+</div>
+
+<button onclick="gen()">Generate Custom</button>
+</div>
+
+<div class="card">
+<h3>⚙️ Tools</h3>
+
+<div class="btns">
+<button class="btn-small" onclick="load()">🔄 Refresh</button>
+<button class="btn-small" onclick="clearExpired()">🧹 Clear Expired</button>
+</div>
+
+</div>
+
+<div class="card">
+<h3>📋 Keys</h3>
+<div id="list"></div>
+</div>
+
+</div>
+
+<script>
+lucide.createIcons();
+
+const BASE="https://hamzi-system.onrender.com";
+
+/* 🔐 LOGIN */
+async function login(){
+const res=await fetch(BASE+'/login',{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({
+username:document.getElementById('user').value,
+password:document.getElementById('pass').value
+})
+});
+
+const d=await res.json();
+
+if(d.success){
+document.getElementById('login').style.display='none';
+document.getElementById('panel').style.display='block';
+load();
+}else{
+alert("❌ Wrong Login");
+}
+}
+
+/* QUICK */
+function quick(sec){
+document.getElementById('duration').value=sec;
+gen();
+}
+
+/* GENERATE */
+async function gen(){
+const d=document.getElementById('duration').value;
+
+if(!d) return alert("Enter duration");
+
+const res=await fetch(BASE+'/generate-key',{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({duration:d})
+});
+
+const data=await res.json();
+
+alert("✅ KEY: "+data.key);
+
+load();
+}
+
+/* LOAD */
+async function load(){
+
+const s=await fetch(BASE+'/stats');
+const stats=await s.json();
+
+document.getElementById('total').innerText="Total: "+stats.total;
+document.getElementById('active').innerText="Active: "+stats.active;
+document.getElementById('expired').innerText="Expired: "+stats.expired;
+
+const k=await fetch(BASE+'/keys');
+const data=await k.json();
+
+const list=document.getElementById('list');
+list.innerHTML="";
+
+data.forEach(x=>{
+list.innerHTML+=`
+<div class="key">
+${x.key}<br>
+Exp: ${new Date(x.expiry).toLocaleString()}
+<br>
+<button onclick="copyKey('${x.key}')">Copy</button>
+<button onclick="delKey('${x.key}')">Delete</button>
+</div>
+`;
+});
+}
+
+/* DELETE */
+async function delKey(k){
+await fetch(BASE+'/delete/'+k,{method:'DELETE'});
+load();
+}
+
+/* COPY */
+function copyKey(k){
+navigator.clipboard.writeText(k);
+alert("Copied!");
+}
+
+/* CLEAR */
+async function clearExpired(){
+await fetch(BASE+'/clear-expired',{method:'POST'});
+load();
+}
+</script>
+
+</body>
+</html>
